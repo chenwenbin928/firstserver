@@ -15,11 +15,18 @@ int   worker_process_socket_register(struct  serverinfo   *server,int  index, in
 			if(server->process[i].channel[j]==0)
 			{
 			   server->process[i].channel[j]=fd;
+			   if(i==server->processnum-1&&j)
+			   {
+				  server->process[index].recvflag=1;
+				  printf("-----index=%d----\n",index);
+			   }
+			   return   1;
 			}
 			else
 			   continue;
 		}
 	}
+	return  1;
 }
 
 /*发送文件描述函数*/
@@ -146,6 +153,7 @@ int   worker_process_recv_comm_signal_handler(struct serverinfo  *server,int  in
 	    worker_process_recv_socket(server,index);
 		return   1;
 	}
+	printf("server->process[%d].recvflag=%d\n",index,server->process[index].recvflag);
 	struct  command   comm;
 	memset(&comm,0,sizeof(comm));
 	int  ret;

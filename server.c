@@ -417,7 +417,6 @@ int  setsocketexecclose(int  socket)
 		perror("fcntl");
 		return  -1;
 	}
-	memset(&server->serveraddr,0,sizeof(server->serveraddr));
 	flag|=FD_CLOEXEC;
 	if(fcntl(socket,F_SETFD,flag)<0)
 	{
@@ -453,17 +452,17 @@ int   send_socket_to_other_worker_process(struct  serverinfo  * server,int  inde
 	memset(&msg,0,sizeof(msg));
 	for(i=0;i<processnum;i++)
 	{   
-	   if(i==index)
-		   break;
-	   else
-	   {
-		for(j=0;j<2;j++)
+		if(i==index)
+			break;
+		else
 		{
-			msg.type=SEND_FILE_DES;
-			msg.fd=server->process[index].channel[j];
-			send_socketfd_to_workerprocess(server,i,&msg,sizeof(msg));
+			for(j=0;j<2;j++)
+			{
+				msg.type=SEND_FILE_DES;
+				msg.fd=server->process[index].channel[j];
+				send_socketfd_to_workerprocess(server,i,&msg,sizeof(msg));
+			}
 		}
-	   }
 	}
 	return  1;
 }
@@ -473,10 +472,9 @@ int   send_socket_to_other_worker_process(struct  serverinfo  * server,int  inde
  */
 int   worker_process_recv_socket(struct  serverinfo  *server,int index)
 {
-	int  i,j;
 	struct   command  msg;
 	memset(&msg,0,sizeof(msg));
-    recv_socketfd_from_masterprocess(server,index,&msg,sizeof(msg));
+	recv_socketfd_from_masterprocess(server,index,&msg,sizeof(msg));
 	return  1;
 }
 
@@ -530,7 +528,6 @@ int   init_worker_process(struct serverinfo  *server,int index)
 	//要不要把worker进程绑定到CPU上;
 	server->process[index].slot=index;
 	server->process[index].epfd=epoll_create(BACKLOG);
-	server->process[index].recvflag=0;
 	if(server->process[index].epfd<0)
 	{
 		perror("epoll_create");
@@ -555,6 +552,10 @@ int   init_worker_process(struct serverinfo  *server,int index)
 	server->process[index].pool=connect_pool_init(server->process[index].pool,getpid());
 	//调用这个worker进程的回调函数-----目的是循环处理连接任务。
 	//把我的套接字主动告知给前面的生成的worker进程;接收完成后继续;
+	if(index==server->processnum-1)
+       server->process[index].recvflag=1;
+	else
+       server->process[index].recvflag=0;
 	worker_process_cycle_handler((void *)&index);
 	return  1;
 }
@@ -631,19 +632,16 @@ int  send_signo_command_to_workerprocess(struct serverinfo  *server,int msgcode)
 		comm.type=SEND_SIG_NO;
 		comm.msgcode=msgcode;
 		comm.name="SIGINT";
-		command_and_signo_send(server,&comm,size);
 		break;
 	case  SIGQUIT:
 		comm.type=SEND_SIG_NO;
 		comm.msgcode=msgcode;
 		comm.name="SIGQUIT";
-		command_and_signo_send(server,&comm,size);
 		break;
 	case  COMM_RESTART:
 		comm.type=SERVER_COMM;
 		comm.msgcode=msgcode;
 		comm.name="RESTART";
-		command_and_signo_send(server,&comm,size);
 		break;
 	case  COMM_DISPLAY_SERVER:
 		//返回服务器当前的信息;
@@ -652,7 +650,8 @@ int  send_signo_command_to_workerprocess(struct serverinfo  *server,int msgcode)
 		perror("master 主进程收到了未知指令!\n");
 		return  -1;
 	}
-
+    command_and_signo_send(server,&comm,size);
+	return   1;
 }
 /*
  *系统退出处理;
@@ -672,6 +671,7 @@ int  server_exit_handler(struct  serverinfo  * server)
 		{
 			continue;
 		}
+
 	}
 	//最后释放本地master进程资源;
 	free(server->process);
@@ -680,7 +680,6 @@ int  server_exit_handler(struct  serverinfo  * server)
 	close(server->listenfd);
 	close(server->logfd);
 	exit(0);
-
 }
 
 
@@ -700,7 +699,6 @@ int  main(int  argc,char **argv)
 		return  0;
 	}
 	server=server_init(server,server_ini_file,argc,argv,current_work_path);
-
 	signal_set_init(&server->act);
 	add_signal_to_master_process_set(&server->set);
 	//初始化子进程函数;	
