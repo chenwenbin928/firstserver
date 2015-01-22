@@ -24,7 +24,7 @@ struct  userinfo
 
 
 int  nameswitch(char *elm1,char *elm2);
-struct   userinfo  *  queue_init(struct   userinfo  * head);
+struct   userinfo  *  queue_init(struct   userinfo  * head,int  index);
 int   queue_insert_node(struct  userinfo  *head, struct  userinfo  *elm);
 int  queue_remove_node(struct  userinfo  *head,struct  userinfo  *elm);
 void  display_queue_info(struct  userinfo  * head);

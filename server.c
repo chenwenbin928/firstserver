@@ -14,8 +14,6 @@ int     do_help=0;
 int     do_version=0;
 int     err_flag=0;
 int     server_debug=0;
-int     server_record=0;
-
 
 static   struct   option    longoption[]=
 {
@@ -61,7 +59,7 @@ int  master_process_para_args(struct  serverinfo *server,int  argc,char **argv,c
 			{
 				memset(server->log_path,0,sizeof(server->log_path));
 				memcpy(server->log_path,optarg,strlen(optarg));
-				server_record=1;
+				server->logchangeflag=1;
 				printf("当前日志路径被修改为:%s\n",server->log_path);
 			}
 			break;
@@ -89,6 +87,7 @@ int  master_process_para_args(struct  serverinfo *server,int  argc,char **argv,c
 		//显示当前的版本号;
 		server_version_show();
 	}
+	 close(server->logfd);
 	if(err_flag)
 	{
 		//解析出现错误的时候;
@@ -98,8 +97,9 @@ int  master_process_para_args(struct  serverinfo *server,int  argc,char **argv,c
 	{
 		//进入调试模式;
 	}
-	if(server_record)
+	if(server->logchangeflag)
 	{
+	 close(server->logfd);
 		//创建相应的日志文件;
 		server->logfd=create_log_file(server,server->log_path,startpath);
 	}
@@ -237,8 +237,8 @@ int    switch_server_ini(struct   serverinfo  * server,char  * buf)
 		printf("服务器端口号:%d\n",server->serverport);
 		break;
 	case 4:
-		if(server_record==0)	
-			memcpy(server->log_path,buf,strlen(buf)-1);
+		if(!server->logchangeflag)
+	           memcpy(server->log_path,buf,strlen(buf)-1);
 		printf("服务器日志路径:%s\n",server->log_path);
 		break;
 	case 5:
@@ -273,6 +273,7 @@ char *  scan_local_dir(char *path)
 		{
 			printf("找到了配置文件!\n");
 			sprintf(path+strlen(path),"/%s",dt->d_name);
+			closedir(dir);
 			return path;
 		}
 	}
@@ -298,6 +299,7 @@ int   read_server_ini(struct  serverinfo  *server,char *path)
 	{
 		switch_server_ini(server,buf);
 	}
+	fclose(fd);
 }
 /*
  *添加事件到epoll;
@@ -341,16 +343,19 @@ struct  serverinfo  *server_init(struct  serverinfo *server,char *path,int argc,
 		return  NULL;
 	}
 	memset(server,0,sizeof(struct  serverinfo));
-	//搞个读取配置文件函数接口;
+	//搞个读取配置文件函数接口;	
 	master_process_para_args(server,argc,argv,startpath);
 	read_server_ini(server,path);
 	//下面就是各种初始化操作;
-	if(server_record==0)
+	 close(server->logfd);
+	if(server->logchangeflag==0)
+	{
 		server->logfd=create_log_file(server,server->log_path,startpath);
+	}
 	server->listenfd=socket(AF_INET,SOCK_STREAM,0);
 	if(server->listenfd<0)
 	{
-		perror("socket error!\n");
+		perror("server process create   socket   error!\n");
 		return  NULL;
 	}
 	server->serveraddr.sin_family=AF_INET;
@@ -438,7 +443,7 @@ int  find_worker_process_idle(struct  serverinfo  * server)
 		}
 		else
 			continue;
-	}
+	} 
 }
 /*
  *master进程把套接字主动告知给前面生成的worker进程;
@@ -505,7 +510,6 @@ void   worker_process_cycle_handler(void  *data)
 				{
 					//process发过来的,那就是命令或者信号变成守护进程时;
 					worker_process_recv_comm_signal_handler(server,*index);
-
 				}
 				else
 				{
@@ -526,6 +530,7 @@ int   init_worker_process(struct serverinfo  *server,int index)
 	server->process[index].pid=getpid();
 	//要不要把worker进程绑定到CPU上;
 	server->process[index].slot=index;
+	server->process[index].mem_pool=mempool_init(server->process[index].mem_pool,PAGE_SIZE);
 	server->process[index].epfd=epoll_create(BACKLOG);
 	if(server->process[index].epfd<0)
 	{
@@ -533,23 +538,24 @@ int   init_worker_process(struct serverinfo  *server,int index)
 		return  -1;
 	}
 	add_epoll_event(server,server->process[index].channel[0],index,WORKER_PROCESS);
-	add_epoll_event(server,server->listenfd,index,WORKER_PROCESS);
-	queue_init(server->process[index].head);
+	add_epoll_event(server,server->listenfd,index,WORKER_PROCESS);	
+	queue_init(server->process[index].head,index);
 	sigemptyset(&server->process[index].set);
 	if(sigprocmask(SIG_SETMASK,&server->process[index].set,NULL)<0)
 	{
 		perror("sigprocmask");
 		return  -1;
 	}
-	if(!(server->process[index].pool=(struct connect_pool *)malloc(sizeof(struct  connect_pool))))
+	if(!(server->process[index].pool=(struct connect_pool*)calloc(1,sizeof(struct  connect_pool))))
 	{
-		perror("malloc");
+		perror("worker process create connectionpool error\n");
+		free(server->process[index].pool);
 		return  -1;
 	}
 	server->process[index].pool->slot=0;
 	server->process[index].pool->connectnum=MAX_CONNECT_POOL;
+
 	server->process[index].pool=connect_pool_init(server->process[index].pool,getpid());
-	server->process[index].mem_pool=mempool_init(server->process[index].mem_pool,PAGE_SIZE);
 	//调用这个worker进程的回调函数-----目的是循环处理连接任务。
 	//把我的套接字主动告知给前面的生成的worker进程;接收完成后继续;
 	if(index==server->processnum-1)
@@ -641,6 +647,7 @@ int  send_signo_command_to_workerprocess(struct serverinfo  *server,int msgcode)
 	case  COMM_RESTART:
 		comm.type=SERVER_COMM;
 		comm.msgcode=msgcode;
+	 close(server->logfd);
 		comm.name="RESTART";
 		break;
 	case  COMM_DISPLAY_SERVER:
@@ -668,17 +675,16 @@ int  server_exit_handler(struct  serverinfo  * server)
 		if(ret<0)
 			return  -1;
 		else
-		{
+	    {
 			continue;
 		}
-
 	}
 	//最后释放本地master进程资源;
-	free(server->process);
-	free(server);
 	close(server->epfd);
 	close(server->listenfd);
 	close(server->logfd);
+	free(server->process);
+	free(server);
 	exit(0);
 }
 
@@ -741,7 +747,8 @@ int  main(int  argc,char **argv)
 			send_signo_command_to_workerprocess(server,COMM_RESTART);
 			comrestart=0;
 		}
-	}	
+	}
+	return  1;
 }
 
 

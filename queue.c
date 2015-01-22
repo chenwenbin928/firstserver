@@ -1,4 +1,6 @@
 #include"queue.h"
+#include"server.h"
+#include"mempool.h"
 /*比较用户名是否相同*/
 int  nameswitch(char *elm1,char *elm2)
 {
@@ -25,9 +27,9 @@ int  nameswitch(char *elm1,char *elm2)
 	}
 }
 /*初始化双向队列*/
-struct   userinfo  *  queue_init(struct   userinfo  * head)
+struct   userinfo  *  queue_init(struct   userinfo  * head,int  index)
 {
-	if(!(head=(struct  userinfo *)malloc(sizeof(struct  userinfo))))
+	if(!(head=(struct  userinfo *)mempool_alloc(server->process[index].mem_pool,sizeof(struct  userinfo))))
 	{
 		perror("malloc error");
 		return  NULL;

@@ -139,7 +139,12 @@ int    recvmessage(struct   serverinfo *server,int index,struct  message  *msg,s
 
 int   worker_process_exit_handler(struct  serverinfo  * server,int  index)
 {
-	 free(server->process[index].head);
+	
+	 destroy_mem_pool(server->process[index].mem_pool);//注册清理回调回调函数;
+	 destroy_worker_process_conn_pool(server->process[index].pool);
+	 close(server->logfd);
+	 free(server->process);
+	 free(server);
 	 exit(0);  
 }
 

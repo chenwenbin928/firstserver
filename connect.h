@@ -26,8 +26,7 @@ struct   connect_pool * connect_pool_realloc(struct connect_pool  *pool);
 connectlist *  get_connection_from_free_pool(struct  connect_pool  *pool);
 connectlist *   new_create_connect(struct connect_pool  *pool,int  fd,int  status);
 int  return_back_socket_to_pool(struct connect_pool *pool,connectlist  *c);
-
-
+void  destroy_worker_process_conn_pool(struct   connect_pool *pool);
 
 
 

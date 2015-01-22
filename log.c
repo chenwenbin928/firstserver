@@ -36,6 +36,11 @@ int  create_log_file(struct   serverinfo  *server,char  *path,char *startpath)
 		}
 		else
 		{
+			fd=open(server->logfilename,O_RDWR|O_APPEND,0644);
+			if(fd<0)
+			{
+               perror("open");
+			}
 			printf("系统日志文件%s已经存在!\n",server->logfilename);
 
 		}

@@ -15,9 +15,9 @@ struct  connect_pool *connect_pool_init(struct  connect_pool *pool,int  pid)
 {
 	
 	int   i;
-    if(!(pool->conn=(connectlist **)malloc(pool->connectnum*sizeof(connectlist *))))
+    if(!(pool->conn=(connectlist **)calloc(pool->connectnum,sizeof(connectlist *))))
 	{
-		perror("malloc   error");
+		perror("worker connectionpool  init  error");
 		return   NULL;
 	}
 	for(i=0;i<pool->connectnum;i++)
@@ -99,5 +99,13 @@ int  return_back_socket_to_pool(struct connect_pool *pool,connectlist  *c)
           return  0;
 	}
 	return  1;
+}
+
+/*销毁连接池*/
+void  destroy_worker_process_conn_pool(struct   connect_pool *pool)
+{
+    
+	 free(pool->conn);
+	 free(pool);
 }
 

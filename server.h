@@ -68,11 +68,13 @@ struct   serverinfo
    //进程表;
    struct processinfo  *process;
    int    logfd;  //日志文件;
+   int    logchangeflag;
    char   log_path[100];
    int    processnum;
    char   logfilename[50];  
    sigset_t   set; //信号集;
    struct   sigaction  act;
+ 
 };
 
 struct   serverinfo   *server;
