@@ -43,9 +43,9 @@ struct  mempool_t
 };
 
 void  * mempool_alloc(mempool *pool,size_t  size);
-mempool  *  mempool_init(mempool * pool,size_t  size);
+mempool  * mempool_init(mempool * pool,size_t  size);
 void  * mempool_large_block_alloc(mempool *pool,size_t size);
-
+void   destroy_mem_pool(mempool *pool);
 
 #endif
 

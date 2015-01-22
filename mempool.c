@@ -3,8 +3,6 @@
 /*
  *初始化内存池结构;
  */
-
-unsigned int  count;
 mempool  *  mempool_init(mempool * pool,size_t  size)
 {
 	size_t    esize=size?size:PAGE_SIZE;
@@ -18,16 +16,11 @@ mempool  *  mempool_init(mempool * pool,size_t  size)
 	pool->data.last=(unsigned char *)pool+sizeof(mempool);
 	pool->data.end=(unsigned char *)pool+size;
 	pool->data.next=NULL;
-	pool->data.flag=0;
+	pool->data.failedflag=0;
 	pool->large=NULL;
+    pool->data.memID=1;
 	pool->current=pool;
-	printf("---------------------内存池--------------------------\n");
-	printf("sizeof(mempool)=%d\n",                sizeof(mempool));
-	printf("起始地址:%p\n",                       pool->data.last);
-	printf("结束地址:%p\n",                       pool->data.end);
-	printf("可用区域大小:%d\n",                   pool->epsize);
-	printf("当前内存块:%p\n",                     pool->current);
-	printf("-----------------------------------------------------\n");
+	printf("worker进程PID:%d---内存池初始化成功!\n",getpid());
 	return   pool;
 }
 
@@ -58,8 +51,9 @@ void  * mempool_block_alloc(mempool  *pool,size_t size)
 
 	}
 	q->data.next=p;
+	p->data.memID=q->data.memID+1;
 	pool->current=temp?temp:p;
-	printf("申请了新的内存块!%p\n",p);
+	printf("申请了新的内存块!MEMID:%d\n",p->data.memID);
 	return  m;
 }
 
@@ -82,7 +76,6 @@ void  * mempool_large_block_alloc(mempool *pool,size_t size)
 			p->alloc=m;
 			return   m;
 		}
-
 	}
 	//插入链表;
 	if(!(p=(struct  mempool_large_t *)mempool_alloc(pool,sizeof(struct  mempool_large_t))))
@@ -104,7 +97,6 @@ void  * mempool_alloc(mempool *pool,size_t  size)
 	if(size<=p->epsize)
 	{
 		size+=ALIGN_DEFAULT-(size%ALIGN_DEFAULT);
-		printf("size=%d count=%d\n",size,count++);
 		do
 		{
 			ptr=p->data.last;
@@ -120,18 +112,33 @@ void  * mempool_alloc(mempool *pool,size_t  size)
 	return    mempool_large_block_alloc(pool,size);
 }
 
-int  main(int argc,char **argv)
+/*内存池销毁*/
+void   destroy_mem_pool(mempool *pool)
 {
-	mempool  *pool;
-	int     i;
-	pool=mempool_init(pool,50);
-	for(i=0;i<100;i++)
-	{
-		void  *m;
-		m=mempool_alloc(pool,4096);
-		printf("m=%p\n",(unsigned char *)m);
-
-	}
+   //首先释放大内存;
+   struct  mempool_large_t  * p;
+   mempool  *  q,* temp;
+   p=pool->large;
+   void *m;
+   for(;p;p=p->next)
+   {
+	   if(p->alloc)
+	   {
+		   m=p->alloc;
+		   free(m);
+		   p->alloc=NULL;
+	   }
+   }
+   //然后释放小内存块;
+   for(q=pool,temp=q->data.next;;q=temp,temp=temp->data.next)
+   {
+	   free(q);
+	   if(temp==NULL)
+		   break;
+   }
 
 }
+
+
+
 

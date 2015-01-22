@@ -3,7 +3,6 @@
 #include"connect.h"
 #include"signalex.h"
 
-
 sig_atomic_t      sigint=0;  //这种数据类型是原子性;
 sig_atomic_t      sigchild=0;
 sig_atomic_t      sigquit=0;
@@ -550,6 +549,7 @@ int   init_worker_process(struct serverinfo  *server,int index)
 	server->process[index].pool->slot=0;
 	server->process[index].pool->connectnum=MAX_CONNECT_POOL;
 	server->process[index].pool=connect_pool_init(server->process[index].pool,getpid());
+	server->process[index].mem_pool=mempool_init(server->process[index].mem_pool,PAGE_SIZE);
 	//调用这个worker进程的回调函数-----目的是循环处理连接任务。
 	//把我的套接字主动告知给前面的生成的worker进程;接收完成后继续;
 	if(index==server->processnum-1)

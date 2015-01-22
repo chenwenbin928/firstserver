@@ -20,6 +20,7 @@
 #include<sched.h>
 #include<getopt.h>
 #include<time.h>
+#include"mempool.h"
 
 
 
@@ -48,6 +49,7 @@ struct   processinfo
 	void  *data;  //传入回调函数的参数;
     void (*worker_process_handler)(void *data);
 	struct  connect_pool   *pool;
+	mempool    * mem_pool;
 };
 /*
  *服务器要素;

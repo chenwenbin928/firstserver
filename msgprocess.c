@@ -18,7 +18,6 @@ int   worker_process_socket_register(struct  serverinfo   *server,int  index, in
 			   if(i==server->processnum-1&&j)
 			   {
 				  server->process[index].recvflag=1;
-				  printf("-----index=%d----\n",index);
 			   }
 			   return   1;
 			}
