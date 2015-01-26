@@ -2,6 +2,7 @@
 #include"msgprocess.h"
 #include"connect.h"
 #include"signalex.h"
+#include"event.h"
 
 sig_atomic_t      sigint=0;  //这种数据类型是原子性;
 sig_atomic_t      sigchild=0;
@@ -87,7 +88,6 @@ int  master_process_para_args(struct  serverinfo *server,int  argc,char **argv,c
 		//显示当前的版本号;
 		server_version_show();
 	}
-	 close(server->logfd);
 	if(err_flag)
 	{
 		//解析出现错误的时候;
@@ -99,7 +99,6 @@ int  master_process_para_args(struct  serverinfo *server,int  argc,char **argv,c
 	}
 	if(server->logchangeflag)
 	{
-	 close(server->logfd);
 		//创建相应的日志文件;
 		server->logfd=create_log_file(server,server->log_path,startpath);
 	}
@@ -346,8 +345,8 @@ struct  serverinfo  *server_init(struct  serverinfo *server,char *path,int argc,
 	//搞个读取配置文件函数接口;	
 	master_process_para_args(server,argc,argv,startpath);
 	read_server_ini(server,path);
+
 	//下面就是各种初始化操作;
-	 close(server->logfd);
 	if(server->logchangeflag==0)
 	{
 		server->logfd=create_log_file(server,server->log_path,startpath);
@@ -511,10 +510,11 @@ void   worker_process_cycle_handler(void  *data)
 					//process发过来的,那就是命令或者信号变成守护进程时;
 					worker_process_recv_comm_signal_handler(server,*index);
 				}
-				else
+				else if(event[i].data.fd==server->listenfd)
 				{
-					//发送过来的就是消息部分;
+                     worker_process_handler(server,*index);      
 				}
+				
 			}
 
 		}
@@ -647,7 +647,6 @@ int  send_signo_command_to_workerprocess(struct serverinfo  *server,int msgcode)
 	case  COMM_RESTART:
 		comm.type=SERVER_COMM;
 		comm.msgcode=msgcode;
-	 close(server->logfd);
 		comm.name="RESTART";
 		break;
 	case  COMM_DISPLAY_SERVER:
@@ -680,9 +679,11 @@ int  server_exit_handler(struct  serverinfo  * server)
 		}
 	}
 	//最后释放本地master进程资源;
+	printf("it's  over!\n");
 	close(server->epfd);
 	close(server->listenfd);
 	close(server->logfd);
+	close(server->file.fd);
 	free(server->process);
 	free(server);
 	exit(0);
@@ -706,6 +707,7 @@ int  main(int  argc,char **argv)
 	}
 	server=server_init(server,server_ini_file,argc,argv,current_work_path);
 	signal_set_init(&server->act);
+    server_open_file_mutex(&server->file);	
 	add_signal_to_master_process_set(&server->set);
 	//初始化子进程函数;	
 #ifndef  _DAEMONE_

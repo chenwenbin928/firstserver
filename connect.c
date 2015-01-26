@@ -1,14 +1,6 @@
 #include"connect.h"
 #include"server.h"
 
-//枚举类型;
-enum status
-{
-	WAIT_LISTENING,
-	DATA_READING,
-	DATA_WRITING,
-	SOCKET_CLOSING
-};
 
 /*初始化连接池*/
 struct  connect_pool *connect_pool_init(struct  connect_pool *pool,int  pid)

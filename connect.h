@@ -5,6 +5,13 @@
 #include<string.h>
 #define  MAX_CONNECT_POOL   1024
 
+enum status
+{
+	WAIT_LISTENING,
+	DATA_READING,
+	DATA_WRITING,
+	SOCKET_CLOSING
+};
 //状态机机制;
 
 typedef   struct  connection

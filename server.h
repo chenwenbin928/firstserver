@@ -21,8 +21,7 @@
 #include<getopt.h>
 #include<time.h>
 #include"mempool.h"
-
-
+#include"file_mutex.h"
 
 #define     BUFSIZE   200
 #define     BACKLOG   2048
@@ -71,6 +70,7 @@ struct   serverinfo
    int    logchangeflag;
    char   log_path[100];
    int    processnum;
+   struct  file_mutex_t  file;
    char   logfilename[50];  
    sigset_t   set; //信号集;
    struct   sigaction  act;
