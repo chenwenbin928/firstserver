@@ -142,6 +142,7 @@ int   worker_process_exit_handler(struct  serverinfo  * server,int  index)
 	
 	 destroy_mem_pool(server->process[index].mem_pool);//注册清理回调回调函数;
 	 destroy_worker_process_conn_pool(server->process[index].pool);
+     close(server->file.fd);
 	 close(server->logfd);
 	 free(server->process);
 	 free(server);

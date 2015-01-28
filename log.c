@@ -20,6 +20,7 @@ int  create_log_file(struct   serverinfo  *server,char  *path,char *startpath)
 	if(chdir(path)<0)
 	{
 		//打印错误信息  然后退出;
+		return   -1;
 	}
 	else
 	{ 

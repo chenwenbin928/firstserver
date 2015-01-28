@@ -12,6 +12,7 @@ int   server_open_file_mutex(struct  file_mutex_t *file )
 	}
     snprintf(file->filename,sizeof("/dev/null"),"%s","/dev/null");
     printf("主进程打开锁文件%s成功!\n",file->filename);
+
 	return  1;
 }
 

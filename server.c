@@ -512,9 +512,14 @@ void   worker_process_cycle_handler(void  *data)
 				}
 				else if(event[i].data.fd==server->listenfd)
 				{
+					 //接收连接;
                      worker_process_handler(server,*index);      
 				}
-				
+				else
+				{    
+					//这边是处理数据传输之类的任务;
+
+				}
 			}
 
 		}
@@ -682,6 +687,7 @@ int  server_exit_handler(struct  serverinfo  * server)
 	printf("it's  over!\n");
 	close(server->epfd);
 	close(server->listenfd);
+	close(server->file.fd);
 	close(server->logfd);
 	close(server->file.fd);
 	free(server->process);

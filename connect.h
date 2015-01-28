@@ -17,6 +17,7 @@ enum status
 typedef   struct  connection
 {
 	int    socket;   //连接套接字;
+
 	int    status;   //状态;
 }connectlist;
 
@@ -25,6 +26,7 @@ struct   connect_pool
 	connectlist    **conn;     //连接池的元素节点;
 	int        slot;      //当前连接池的下标索引;
 	int       connectnum; //连接池的容量;
+
 };
 
 

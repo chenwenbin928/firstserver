@@ -2,7 +2,7 @@ object=server.o connect.o  signalex.o \
 	msgprocess.o queue.o  log.o  mempool.o  file_mutex.o\
 	event.o
 server : $(object)
-	cc -g -o  server $(object)
+	cc -g $(object) -o  server
 
 server.o : msgprocess.h  connect.h   signalex.h server.h  file_mutex.h  event.h
 connect.o:  connect.h  server.h
