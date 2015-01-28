@@ -1,9 +1,23 @@
 #include"connect.h"
 #include"server.h"
+/*初始化一个连接池的缓冲队列*/
+connectlist  *  init_conn_pool_queue(struct  serverinfo *server,int index,struct connect_pool *pool)
+{
+     if(!(pool->connlist=(connectlist *)mempool_alloc(server->process[index].mem_pool,sizeof(connectlist))))
+	 {
+        perror("init failure!\n");
+	 }
+	 pool->connlist->next=NULL;
+}
 
+/*添加一个连接进入到队列里*/
+int   add_connect_node_to_bufflist(int   fd,int  stauts)
+{
+    
+}
 
 /*初始化连接池*/
-struct  connect_pool *connect_pool_init(struct  connect_pool *pool,int  pid)
+struct  connect_pool *connect_pool_init(struct serverinfo *server ,int  index,struct  connect_pool *pool,int  pid)
 {
 	
 	int   i;
@@ -12,10 +26,7 @@ struct  connect_pool *connect_pool_init(struct  connect_pool *pool,int  pid)
 		perror("worker connectionpool  init  error");
 		return   NULL;
 	}
-	for(i=0;i<pool->connectnum;i++)
-	{
-		pool->conn[i]=NULL;
-	}
+	memset(pool->conn,0,sizeof(connectlist *)*pool->connectnum);
 	printf("PID:%dworker进程连接池初始化成功!\n",pid);
 	pool->slot=0;
     return  pool;
@@ -40,23 +51,23 @@ struct   connect_pool *  connect_pool_realloc(struct connect_pool  *pool)
 		   return   pool;
 	   }
 	}
-	else
-		return   NULL;
-    
 }
 
 /*从空闲中取出一个节点出来*/
-connectlist *  get_connection_from_free_pool(struct  connect_pool  *pool)
+connectlist * get_connection_from_free_pool(struct  connect_pool  *pool)
 {
 	 connectlist  *  conn;
      if(pool->slot<pool->connectnum)
 	 { 
-         conn=pool->conn[pool->slot++];
+         conn=pool->conn[pool->slot];
+		 printf("conn=%p\n",conn);
+		 printf("pool->slot=%d\n",pool->slot);
 		 return  conn;
 	 }
 	 else
 	 {
          //不够了  我们就扩容吧;
+		 printf("扩容!\n");
          pool=connect_pool_realloc(pool);
 		 conn=pool->conn[pool->slot++];
 		 return  conn;
@@ -64,17 +75,26 @@ connectlist *  get_connection_from_free_pool(struct  connect_pool  *pool)
 }
 
 /*新建一个连接*/
-connectlist *   new_create_connect(struct  connect_pool  *pool,int  fd,int  status)
+void new_create_connect(struct  connect_pool  *pool,int  fd,int  status)
 {
    connectlist  *conn;
    conn=get_connection_from_free_pool(pool);
-   if(!conn)
-	   return  NULL;
+   if(conn!=NULL)
+   {
+	   perror("conn get  fail!");
+   }
    else
    {
+      if(!(conn=(connectlist *)calloc(1,sizeof(connectlist))))
+	  {
+		  perror("malloc  errror");
+	  }
+
+	  pool->conn[pool->slot]=conn;
+	  printf("pool->conn[%d]=%p\n",pool->slot,pool->conn[pool->slot]);
       conn->socket=fd;
       conn->status=status;
-      return   conn;
+	  pool->slot++;
    }
 }
 

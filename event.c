@@ -1,5 +1,7 @@
 #include"event.h"
 #include"file_mutex.h"
+#include"connect.h"
+
 /*
  *客户端的一些连接信息显示;
  */
@@ -16,6 +18,7 @@ int worker_process_handler(struct  serverinfo  *server,int  index)
 {
    struct   sockaddr_in   clientaddr;
    int    fd;
+   connectlist   * conn;  
    socklen_t   clielen;
    clielen=sizeof(clientaddr);
    memset(&clientaddr,0,sizeof(struct  sockaddr_in));
@@ -28,9 +31,9 @@ int worker_process_handler(struct  serverinfo  *server,int  index)
 	   perror("accept error!");
    }
    //正常情形下我应该从连接池里拿出一个连接出来给我这个新的连接;
+   printf("fd=%d\n",fd);
    worker_process_unlock_set(&server->file);
+   new_create_connect(server->process[index].pool,fd,WAIT_LISTENING);
    display_client_connect_info(fd,&clientaddr);
-
-
    return   1;
 }
