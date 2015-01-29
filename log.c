@@ -50,7 +50,11 @@ int  create_log_file(struct   serverinfo  *server,char  *path,char *startpath)
 	return  fd;//返回日志文件的描述符;
 }
 
+
 /*日志记录*/
+
+
+
 
 
 

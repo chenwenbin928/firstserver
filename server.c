@@ -689,7 +689,6 @@ int  server_exit_handler(struct  serverinfo  * server)
 	close(server->listenfd);
 	close(server->file.fd);
 	close(server->logfd);
-	close(server->file.fd);
 	free(server->process);
 	free(server);
 	exit(0);
