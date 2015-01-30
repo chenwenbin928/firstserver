@@ -50,6 +50,7 @@ struct  connect_pool *connect_pool_init(struct serverinfo *server ,int  index,st
 	printf("PID:%dworker进程连接池初始化成功!\n",pid);
 	pool->freeconnhead=init_conn_pool_queue(server,index,pool);
 	pool->slot=0;
+	pool->maxflag=0;
 	return  pool;
 }
 
@@ -126,6 +127,7 @@ connectlist  *  find_free_node_from_connectfreelist(struct  connect_pool *pool)
 /*新建一个连接*/
 void new_create_connect(struct  serverinfo  *server,int index,struct  connect_pool  *pool,int  fd,int  status,struct   sockaddr_in *client_addr)
 {
+	int    startup_time=0;
 	connectlist  *conn;
 	connectlist  *temp=pool->freeconnhead;
 	if(temp->next!=pool->freeconnhead)
@@ -138,9 +140,7 @@ void new_create_connect(struct  serverinfo  *server,int index,struct  connect_po
 	if(conn!=NULL)
 	{
         conn->socket=fd;
-		memcpy(conn->client_addr,inet_ntoa(client_addr->sin_addr),sizeof(inet_ntoa(client_addr->sin_addr)));
 		conn->status=status;
-		conn->port=ntohs(client_addr->sin_port);
 		//索引号已经有了;
 	}
 	else
@@ -156,6 +156,15 @@ void new_create_connect(struct  serverinfo  *server,int index,struct  connect_po
 		conn->status=status;
 		pool->slot++;
 	}
+	struct timeval  timeout={60,0};
+	gettimeofday(&conn->starttv,NULL);
+	setsockopt(conn->socket,SOL_SOCKET,SO_SNDTIMEO,(char*)&timeout,sizeof(int));
+	setsockopt(conn->socket,SOL_SOCKET,SO_RCVTIMEO,(char*)&timeout,sizeof(int));
+	setsocketnonblocking(conn->socket);
+	startup_time=conn->starttv.tv_sec*1000+conn->starttv.tv_usec/1000;
+	printf("连接建立时间:%dms\n",startup_time);
+    memcpy(conn->client_addr,inet_ntoa(client_addr->sin_addr),sizeof(inet_ntoa(client_addr->sin_addr)));
+    conn->port=ntohs(client_addr->sin_port);
 }
 
 /*销毁连接池*/

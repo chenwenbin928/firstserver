@@ -79,7 +79,8 @@ int    sendmessage(struct   serverinfo *server,int  index,struct  message *msg,s
     switch(msg->type)
 	{
 	  case  SEND_DATA_MESSAGE:
-		                
+		    
+		    //在这边发送;
 			break;
 	  default:
 			perror("unknown  message  type!\n");
@@ -122,13 +123,14 @@ int   recv_socketfd_from_masterprocess(struct  serverinfo * server,int   index, 
 	return   1;
 }
 
-/*接收消息*/
-int    recvmessage(struct   serverinfo *server,int index,struct  message  *msg,size_t  msglen)
+/*接收消息的话,先接受然后直接处理;*/
+int    recvmessagehandle(struct   serverinfo *server,int index,struct  message  *msg,size_t  msglen)
 {
+	 size_t   length;
      switch(msg->type)
 	 {
-		   
 	   case SEND_DATA_MESSAGE:
+                  
 			break;
 	   default:
 			perror("unknown  message  type!\n");

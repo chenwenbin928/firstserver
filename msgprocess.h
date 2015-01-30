@@ -13,13 +13,15 @@
 
 //消息类型定义
 
-#define   SEND_FILE_DES     0x01    //传递文件描述符;
-#define   SEND_SIG_NO       0x02    //发送信号;
-#define   SEND_DATA_MESSAGE 0x03   //发送数据信息;
-#define   SERVER_COMM       0x04
+#define   SEND_FILE_DES     0x01   //传递文件描述符;
+#define   SEND_SIG_NO       0x02   //发送信号;
+#define   SEND_DATA_MESSAGE 0x03   //发送数据信息; 这个是用户和用户之间传递;
+#define   SERVER_COMM       0x05   //系统命令;     这个是主进程和子进程之间的传递
 
 #define  COMM_RESTART         0x10  //重启;
 #define  COMM_DISPLAY_SERVER  0x12   //显示服务情况;
+
+
 
 struct   command
 {
@@ -30,7 +32,7 @@ struct   command
 };
 
 struct    message
-{  
+{ 
 	int   type;      //消息类型定义;
 	int   slot;      //发送方的索引号;
 	int   senddrt;   //发送方向;

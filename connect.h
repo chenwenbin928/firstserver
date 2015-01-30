@@ -4,6 +4,7 @@
 #include<stdlib.h>
 #include<string.h>
 #include<time.h>
+#include<sys/time.h>
 #include"server.h"
 #define  MAX_CONNECT_POOL   100
 
@@ -20,19 +21,20 @@ enum status
 //状态机机制;
 /*
  *一个连接的定义;
- *
+ *对于连接超时的问题,原先是打算提交事件到二叉树来解决   
+ *但是对于频繁的网络连接,我只能呵呵了
+ *于是乎  我就打算把网络连接事件交给客户端
  *
  */
 typedef   struct  connection
 {
-	int    socket;   //连接套接字;
-	int    status;   //状态;
-	char   client_addr[50];//ip地址;
-	int    port;       //端口号;
-	int    index;     //该连接在连接池里的下标索引号;
-	struct  timeval  timeouttv;   //超时时间; 这边有点让我头疼;难道要用个小根堆来解决超时问题？？？？？？？
-	struct  timeval  starttv; //连接建立时间;
-	struct    connection *  next; //这个指针域是在节点释放的时候 我才会去用;
+	int     socket;   //连接套接字;
+	int     status;   //状态;
+	char    client_addr[50];//ip地址;
+	int     port;       //端口号;
+	int     index;     //该连接在连接池里的下标索引号;
+    struct  timeval     starttv; //连接建立时间;
+	struct  connection  *next; //这个指针域是在节点释放的时候 我才会去用;
 	//下面定义对应的事件吧;回调函数实现;event.h结构体中
 }connectlist;
 
@@ -49,6 +51,7 @@ struct   connect_pool
 	int       connectnum; //连接池的最大容量;
     connectlist  * freeconnhead;//当前的空闲节点链表;		
 	int         connnum; //当前空闲节点数目;
+	int         maxflag; //网络连接上限标志位;为1的话  我们就不允许接收连接了！
 };
 
 

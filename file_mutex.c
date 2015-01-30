@@ -30,7 +30,7 @@ int   worker_process_lock_set(struct file_mutex_t  *file)
 		perror("worker  process set  filelock  successfully!\n");
 		return  -1;
 	}
-	printf("进程PID:%d获取锁成功!\n",getpid());
+//	printf("进程PID:%d获取锁成功!\n",getpid());
 	return   1;
 }
 
@@ -50,6 +50,6 @@ int   worker_process_unlock_set(struct file_mutex_t  *file)
 	   perror("worker  process  realease  filelock  failure!\n");
 	   return  -1;
    }
-   printf("进程PID:%d 释放锁成功!\n",getpid());
+// printf("进程PID:%d 释放锁成功!\n",getpid());
    return   1;
 }

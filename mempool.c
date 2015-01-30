@@ -53,7 +53,7 @@ void  * mempool_block_alloc(mempool  *pool,size_t size)
 	q->data.next=p;
 	p->data.memID=q->data.memID+1;
 	pool->current=temp?temp:p;
-	printf("申请了新的内存块!MEMID:%d\n",p->data.memID);
+//	printf("申请了新的内存块!MEMID:%d\n",p->data.memID);
 	return  m;
 }
 

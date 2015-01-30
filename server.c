@@ -486,10 +486,13 @@ int   worker_process_recv_socket(struct  serverinfo  *server,int index)
  */
 void  worker_process_cycle_handler(struct callback_arg  *data)
 { 
+	struct   message   msg;
+	size_t   length;
     int   tempindex=data->index;
 	int   timeout=data->timeout;
 	struct   epoll_event   event[EPOLL_EVENT_MAXSiZE];
 	int  nfds,i;
+	int  ret;
 	while(1)
 	{
 		nfds=epoll_wait(server->process[tempindex].epfd,event,EPOLL_EVENT_MAXSiZE,timeout);
@@ -500,10 +503,12 @@ void  worker_process_cycle_handler(struct callback_arg  *data)
 				continue;
 			}
 			//调用信号处理函数;
-
+			//这边可以变态的屏蔽掉除了我指定的信号之外的所有信号;
 		}
 		else
 		{
+            
+			//处理网络连接;
 			for(i=0;i<nfds;i++)
 			{
 				if(event[i].data.fd==server->process[tempindex].channel[0])
@@ -514,15 +519,31 @@ void  worker_process_cycle_handler(struct callback_arg  *data)
 				else if(event[i].data.fd==server->listenfd)
 				{
 					 //接收连接;
-                     worker_process_handler(server,tempindex);      
+                     ret=worker_process_handler(server,tempindex);    
+					 if(ret<0)
+					 {
+						printf("连接已经到达上限!\n");
+					    continue;
+					 }
 				}
 				else
 				{    
 					//这边是处理数据传输之类的任务;
-
+                    //这边应该是最复杂的部分;
+					//主要是接收客户端发送过来的数据;
+					//转发的实现
+					//还有数据包的完整度检测;
+					//网络节点超时的检测;
+                    //接受之前要不要判断下这个数据有没有接受完;
+					//没有接受完怎么办？？？？？？
+					length=recv(event[i].data.fd,&msg,sizeof(msg),MSG_WAITALL);
+                    if(length<=0)
+					{
+                       perror("我超时了！！！！！！！！！！！！！！！\n");
+					}
 				}
 			}
-
+            
 		}
 	}
 
@@ -537,7 +558,8 @@ int   init_worker_process(struct serverinfo  *server,int index)
 	arg.index=index;
 	arg.timeout=EPOLL_TIME_OUT;
 	server->process[index].pid=getpid();
-	//要不要把worker进程绑定到CPU上;
+	//要不要把worker进程绑定到CPU的核心上
+	//多核的话可以绑定下,避免进程之间切换开销;
 	server->process[index].slot=index;
 	server->process[index].mem_pool=mempool_init(server->process[index].mem_pool,PAGE_SIZE);
 	server->process[index].epfd=epoll_create(BACKLOG);
