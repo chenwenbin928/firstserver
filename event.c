@@ -23,5 +23,7 @@ int worker_process_handler(struct  serverinfo  *server,int  index)
    //正常情形下我应该从连接池里拿出一个连接出来给我这个新的连接;
    worker_process_unlock_set(&server->file);
    new_create_connect(server,index,server->process[index].pool,fd,WAIT_LISTENING,&clientaddr);
+   //提交一个事件到进程的小根堆中;
+
    return   1;
 }

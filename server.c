@@ -484,14 +484,15 @@ int   worker_process_recv_socket(struct  serverinfo  *server,int index)
 /*
  *worker进程循环处理函数接口;
  */
-void   worker_process_cycle_handler(void  *data)
+void  worker_process_cycle_handler(struct callback_arg  *data)
 { 
-	int  *index=(int *)data;
+    int   tempindex=data->index;
+	int   timeout=data->timeout;
 	struct   epoll_event   event[EPOLL_EVENT_MAXSiZE];
 	int  nfds,i;
 	while(1)
 	{
-		nfds=epoll_wait(server->process[*index].epfd,event,EPOLL_EVENT_MAXSiZE,-1);
+		nfds=epoll_wait(server->process[tempindex].epfd,event,EPOLL_EVENT_MAXSiZE,timeout);
 		if(nfds==-1)
 		{
 			if(errno!=EINTR)
@@ -505,15 +506,15 @@ void   worker_process_cycle_handler(void  *data)
 		{
 			for(i=0;i<nfds;i++)
 			{
-				if(event[i].data.fd==server->process[*index].channel[0])
+				if(event[i].data.fd==server->process[tempindex].channel[0])
 				{
 					//process发过来的,那就是命令或者信号变成守护进程时;
-					worker_process_recv_comm_signal_handler(server,*index);
+					worker_process_recv_comm_signal_handler(server,tempindex);
 				}
 				else if(event[i].data.fd==server->listenfd)
 				{
 					 //接收连接;
-                     worker_process_handler(server,*index);      
+                     worker_process_handler(server,tempindex);      
 				}
 				else
 				{    
@@ -532,6 +533,9 @@ void   worker_process_cycle_handler(void  *data)
  */
 int   init_worker_process(struct serverinfo  *server,int index)
 {
+    struct  callback_arg  arg;
+	arg.index=index;
+	arg.timeout=EPOLL_TIME_OUT;
 	server->process[index].pid=getpid();
 	//要不要把worker进程绑定到CPU上;
 	server->process[index].slot=index;
@@ -567,7 +571,7 @@ int   init_worker_process(struct serverinfo  *server,int index)
        server->process[index].recvflag=1;
 	else
        server->process[index].recvflag=0;
-	worker_process_cycle_handler((void *)&index);
+	worker_process_cycle_handler((struct callback_arg *)&arg);
 	return  1;
 }
 
@@ -682,6 +686,7 @@ int  server_exit_handler(struct  serverinfo  * server)
 	    {
 			continue;
 		}
+		  printf("<<<\n");
 	}
 	//最后释放本地master进程资源;
 	printf("it's  over!\n");

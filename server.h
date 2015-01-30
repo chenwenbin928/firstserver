@@ -22,12 +22,22 @@
 #include<time.h>
 #include"mempool.h"
 #include"file_mutex.h"
+#define   EPOLL_TIME_OUT     300000
 
 #define     BUFSIZE   200
 #define     BACKLOG   2048
 #define     MASTER_PROCESS  0x01
 #define     WORKER_PROCESS  0x02
 #define    _DAEMONE_        0x03
+
+/*
+ *传给进程回调函数的参数;
+ */
+struct   callback_arg
+{
+	int    index;
+	int    timeout;
+};
 
 
 /*
@@ -45,10 +55,10 @@ struct   processinfo
 	//注册用户信息;可以用数据库来搞吧;
 	//业务处理函数
 	sigset_t   set;
-	void  *data;  //传入回调函数的参数;
-    void (*worker_process_handler)(void *data);
+    void (*worker_process_handler)(struct  callback_arg  *data );
 	struct  connect_pool   *pool;
 	mempool    * mem_pool;
+	//添加一个小根堆来管理超时事件;
 };
 /*
  *服务器要素;
@@ -88,7 +98,7 @@ struct serverinfo  *server_init(struct  serverinfo *server,char *path,int argc,c
 int    find_worker_process_idle(struct  serverinfo  * server);
 int    setsocketnonblocking(int   socket);
 int    setsocketexecclose(int  socket);
-void   worker_process_cycle_handler(void  *data);
+void   worker_process_cycle_handler(struct callback_arg  *data);
 int    create_worker_process(struct  serverinfo  *server);
 int    master_process_para_args(struct   serverinfo  *server,int  argc,char *argv[],char *startpath);
 
