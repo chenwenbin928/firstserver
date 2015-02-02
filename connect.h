@@ -6,7 +6,7 @@
 #include<time.h>
 #include<sys/time.h>
 #include"server.h"
-#define  MAX_CONNECT_POOL   100
+#define  MAX_CONNECT_POOL   1024
 
 #define  FIRST_MALLOC       0x01
 #define  FREE_FIND          0x02
@@ -32,7 +32,6 @@ typedef   struct  connection
 	int     status;   //状态;
 	char    client_addr[50];//ip地址;
 	int     port;       //端口号;
-	int     index;     //该连接在连接池里的下标索引号;
     struct  timeval     starttv; //连接建立时间;
 	struct  connection  *next; //这个指针域是在节点释放的时候 我才会去用;
 	//下面定义对应的事件吧;回调函数实现;event.h结构体中
@@ -47,7 +46,7 @@ typedef   struct  connection
 struct   connect_pool
 {
 	connectlist    **conn;     //连接池的索引表; 可以用哈希表代替吧;
-	int        slot;      //当前连接池的有效节点个数;
+	int       nodenum;      //当前连接池的有效节点个数;
 	int       connectnum; //连接池的最大容量;
     connectlist  * freeconnhead;//当前的空闲节点链表;		
 	int         connnum; //当前空闲节点数目;
@@ -56,8 +55,8 @@ struct   connect_pool
 
 
 struct  connect_pool *connect_pool_init(struct serverinfo  *server,int index,struct  connect_pool *pool,int  pid);//连接池初始化;
-struct   connect_pool * connect_pool_realloc(struct connect_pool  *pool); //连接池扩容;
-connectlist *  get_connection_from_free_pool(struct  connect_pool  *pool,connectlist  *conn);//从空闲索引表中取出一个指针表示我们实际上的在线连接。
+struct   connect_pool * connect_pool_realloc(struct connect_pool  *pool,int  fd); //连接池扩容;
+connectlist *  get_connection_from_free_pool(struct  connect_pool  *pool,int  fd);//从空闲索引表中取出一个指针表示我们实际上的在线连接。
 void (*callback)(struct  serverinfo * ,int  ,struct  connect_pool *,int,int,struct sockaddr_in *); //回调函数;
 void  destroy_worker_process_conn_pool(struct   connect_pool *pool); //销毁连接池;
 int   add_connect_node_to_bufflist(struct  connect_pool * pool,connectlist  * conn);//把失效的连接节点送入到空闲链表中;

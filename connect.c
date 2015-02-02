@@ -21,7 +21,6 @@ int   add_connect_node_to_bufflist(struct  connect_pool * pool,connectlist  * co
 	{
 	case   SOCKET_CLOSING://判断是不是连接关闭状态;
 		//空闲节点的信息全部清空;
-		pool->conn[conn->index]=NULL;
 		memset(conn,0,sizeof(connectlist));
 		tail->next=conn;
 		conn->next=pool->freeconnhead;
@@ -33,7 +32,7 @@ int   add_connect_node_to_bufflist(struct  connect_pool * pool,connectlist  * co
 		printf("the  connection node  stauts  is  not   socket_closing!\n");
 		return  -1;
 	}
-
+    return  1;
 }
 
 /*初始化连接池*/
@@ -49,19 +48,19 @@ struct  connect_pool *connect_pool_init(struct serverinfo *server ,int  index,st
 	memset(pool->conn,0,sizeof(connectlist *)*pool->connectnum);
 	printf("PID:%dworker进程连接池初始化成功!\n",pid);
 	pool->freeconnhead=init_conn_pool_queue(server,index,pool);
-	pool->slot=0;
+	pool->nodenum=0;
 	pool->maxflag=0;
 	return  pool;
 }
 
 /*连接池的扩容*/
-struct   connect_pool *  connect_pool_realloc(struct connect_pool  *pool)
+struct   connect_pool *  connect_pool_realloc(struct connect_pool  *pool,int  fd)
 {
 	int a=pool->connectnum;
 	connectlist   **newconn;
-	if(pool->slot>=pool->connectnum)
+	if(fd>=pool->connectnum)
 	{
-		while(pool->slot>=pool->connectnum)
+		while(fd>=pool->connectnum)
 		{
 			pool->connectnum=pool->connectnum*2;
 		}
@@ -78,35 +77,19 @@ struct   connect_pool *  connect_pool_realloc(struct connect_pool  *pool)
 }
 
 /*从空闲中取出一个节点出来*/
-connectlist * get_connection_from_free_pool(struct  connect_pool  *pool,connectlist  *conn)
+connectlist * get_connection_from_free_pool(struct  connect_pool  *pool,int  fd)
 {
-	int     i;
-	for(i=0;i<pool->connectnum;i++)
+	connectlist  *  conn;
+	if(fd>=pool->connectnum)
 	{
-		if(!pool->conn[i])
-		{
-			if(conn)
-			{
-				//这个是一个空闲节点;
-				pool->conn[i]=conn;
-				conn->index=i;
-				return  conn;
-			}
-			else
-			{
-                conn=pool->conn[i];
-				pool->slot=i;
-				return  conn;
-			}
-		}
+		connect_pool_realloc(pool,fd);
+		conn=pool->conn[fd];
 	}
-	if(pool->slot>=pool->connectnum)
+	else
 	{
-		//不够了  我们就扩容吧;
-		pool=connect_pool_realloc(pool);
-		conn=pool->conn[pool->slot++];
-		return  conn;
+		conn=pool->conn[fd];
 	}
+	return  conn;
 }
 /*从空闲节点链表中取出一个空闲节点出来存放连接节点信息*/
 connectlist  *  find_free_node_from_connectfreelist(struct  connect_pool *pool)
@@ -128,43 +111,34 @@ connectlist  *  find_free_node_from_connectfreelist(struct  connect_pool *pool)
 void new_create_connect(struct  serverinfo  *server,int index,struct  connect_pool  *pool,int  fd,int  status,struct   sockaddr_in *client_addr)
 {
 	int    startup_time=0;
-	connectlist  *conn;
+	connectlist  *conn=NULL;
 	connectlist  *temp=pool->freeconnhead;
 	if(temp->next!=pool->freeconnhead)
 	{
 		conn=find_free_node_from_connectfreelist(pool);
-		//如果找到空闲节点,conn!=NULL;
-		//否则的话,conn==NULL;
-	}
-	conn=get_connection_from_free_pool(pool,conn);
-	if(conn!=NULL)
-	{
-        conn->socket=fd;
-		conn->status=status;
-		//索引号已经有了;
 	}
 	else
 	{
+		conn=get_connection_from_free_pool(server->process[index].pool,fd);
 		if(!(conn=(connectlist *)mempool_alloc(server->process[index].mem_pool,sizeof(connectlist))))
 		{
 			perror("malloc  errror");
 		}
-		pool->conn[pool->slot]=conn;
+		pool->conn[fd]=conn; //我原先用的是索引号 发现在释放的时候 不是很方便;
 		//这个地方要把连接节点的信息给初始化下;
-		conn->socket=fd;        //连接描述字;
-		conn->index=pool->slot; //如果这个连接失效的话,我就直接根据索引号找到它在我那个数组表中的位置;
-		conn->status=status;
-		pool->slot++;
 	}
-	struct timeval  timeout={60,0};
+	conn->socket=fd;        //连接描述字;
+	conn->status=status;
+	pool->nodenum++;
+	struct timeval  timeout={30,0};
 	gettimeofday(&conn->starttv,NULL);
 	setsockopt(conn->socket,SOL_SOCKET,SO_SNDTIMEO,(char*)&timeout,sizeof(int));
 	setsockopt(conn->socket,SOL_SOCKET,SO_RCVTIMEO,(char*)&timeout,sizeof(int));
 	setsocketnonblocking(conn->socket);
 	startup_time=conn->starttv.tv_sec*1000+conn->starttv.tv_usec/1000;
 	printf("连接建立时间:%dms\n",startup_time);
-    memcpy(conn->client_addr,inet_ntoa(client_addr->sin_addr),sizeof(inet_ntoa(client_addr->sin_addr)));
-    conn->port=ntohs(client_addr->sin_port);
+	memcpy(conn->client_addr,inet_ntoa(client_addr->sin_addr),sizeof(inet_ntoa(client_addr->sin_addr)));
+	conn->port=ntohs(client_addr->sin_port);
 }
 
 /*销毁连接池*/

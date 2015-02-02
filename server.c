@@ -469,7 +469,40 @@ int   send_socket_to_other_worker_process(struct  serverinfo  * server,int  inde
 	}
 	return  1;
 }
+/*
+ *匹配网络节点;找到地址;
+ */
+int   find_connect_node_from_live_list(struct    connect_pool *  pool,int  fd)
+{
+	 connectlist   * temp;
+	 temp=pool->conn[fd];//找到节点;
+	 temp->status=SOCKET_CLOSING;
+     pool->conn[fd]=NULL;
+	 add_connect_node_to_bufflist(pool,temp);
+	 close(fd);
+	 return  1;
+}
 
+
+
+/*
+ *将失效的fd从当前进程的epfd实例中删除掉;
+ */
+int   del_fd_from_current_process(struct  serverinfo  *server,int  index,int  fd)
+{
+	struct  epoll_event   event;
+	memset(&event,0,sizeof(event));
+	event.data.fd=fd;
+	event.events=EPOLLIN;
+	if(epoll_ctl(server->process[index].epfd,EPOLL_CTL_DEL,fd,&event)<0)
+	{
+		perror("epoll_ctl");
+		return  -1;
+	}
+	printf("网络连接客户端掉线,网络连接%d删除成功!\n",fd);
+    //相应网络节点资源的释放;这边如果通过匹配fd找到节点确实有点蛋疼
+	return   1;
+}
 /*
  *worker进程一直等待所有进程表信息都填充完成后退出;
  */
@@ -502,8 +535,7 @@ void  worker_process_cycle_handler(struct callback_arg  *data)
 			{
 				continue;
 			}
-			//调用信号处理函数;
-			//这边可以变态的屏蔽掉除了我指定的信号之外的所有信号;
+			printf("---------------------\n");
 		}
 		else
 		{
@@ -528,18 +560,20 @@ void  worker_process_cycle_handler(struct callback_arg  *data)
 				}
 				else
 				{    
-					//这边是处理数据传输之类的任务;
-                    //这边应该是最复杂的部分;
-					//主要是接收客户端发送过来的数据;
-					//转发的实现
-					//还有数据包的完整度检测;
-					//网络节点超时的检测;
-                    //接受之前要不要判断下这个数据有没有接受完;
-					//没有接受完怎么办？？？？？？
 					length=recv(event[i].data.fd,&msg,sizeof(msg),MSG_WAITALL);
-                    if(length<=0)
+                    if(length<0)
 					{
-                       perror("我超时了！！！！！！！！！！！！！！！\n");
+                        if(errno==EWOULDBLOCK)
+						{
+							perror("超时了!\n");
+						}
+					}
+					else  if(length==0)
+					{
+						//执行删除函数;将对应的fd从当前worker进程的epfd实例中删除;
+						del_fd_from_current_process(server,tempindex,event[i].data.fd);
+						find_connect_node_from_live_list(server->process[tempindex].pool,event[i].data.fd);	
+						continue;
 					}
 				}
 			}
@@ -582,10 +616,8 @@ int   init_worker_process(struct serverinfo  *server,int index)
 		perror("worker process create connectionpool error\n");
 		free(server->process[index].pool);
 		return  -1;
-	}
-	server->process[index].pool->slot=0;
+    }
 	server->process[index].pool->connectnum=MAX_CONNECT_POOL;
-
 	server->process[index].pool=connect_pool_init(server,index,server->process[index].pool,getpid());
 	//调用这个worker进程的回调函数-----目的是循环处理连接任务。
 	//把我的套接字主动告知给前面的生成的worker进程;接收完成后继续;
@@ -708,7 +740,6 @@ int  server_exit_handler(struct  serverinfo  * server)
 	    {
 			continue;
 		}
-		  printf("<<<\n");
 	}
 	//最后释放本地master进程资源;
 	printf("it's  over!\n");

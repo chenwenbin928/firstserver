@@ -25,7 +25,7 @@ int worker_process_handler(struct  serverinfo  *server,int  index)
 			worker_process_unlock_set(&server->file);
 			//添加个网络连接上限标志位!;
 			server->process[index].pool->maxflag=1;
-			printf("PID:%d当前连接总数%d\n",getpid(),server->process[index].pool->slot);
+			printf("PID:%d当前连接总数%d\n",getpid(),server->process[index].pool->nodenum);
 			return  -1;
 		}
 		//正常情形下我应该从连接池里拿出一个连接出来给我这个新的连接;
