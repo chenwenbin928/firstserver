@@ -20,7 +20,8 @@ int worker_process_handler(struct  serverinfo  *server,int  index)
 		fd=accept(server->listenfd,(struct sockaddr *)&clientaddr,&clielen);
 		if(fd<0)
 		{
-
+            if(errno==EINTR)
+		       	return  1;
 			perror("accept error!");
 			worker_process_unlock_set(&server->file);
 			//添加个网络连接上限标志位!;
@@ -32,8 +33,6 @@ int worker_process_handler(struct  serverinfo  *server,int  index)
 		worker_process_unlock_set(&server->file);
 		new_create_connect(server,index,server->process[index].pool,fd,WAIT_LISTENING,&clientaddr);
         add_epoll_event(server,fd,index,WORKER_PROCESS); //加入到当前进程的epoll中;
-		//发送一个数据告诉客户端连接建立成功,你那边建立一个定时器,在规定时间内如果没有数据过来,定时器超时
-		//就发送一个信息过来我把连接给关闭;
 	}
 	return   1;
 }

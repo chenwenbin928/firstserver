@@ -22,11 +22,9 @@ int   add_connect_node_to_bufflist(struct  connect_pool * pool,connectlist  * co
 	case   SOCKET_CLOSING://判断是不是连接关闭状态;
 		//空闲节点的信息全部清空;
 		memset(conn,0,sizeof(connectlist));
+    	printf("空闲节点插入空闲链表成功!\n");
+		conn->next=tail->next;
 		tail->next=conn;
-		conn->next=pool->freeconnhead;
-		tail=conn; 
-		pool->connnum++;
-		printf("空闲节点插入空闲链表成功!\n");
 		break;
 	default:
 		printf("the  connection node  stauts  is  not   socket_closing!\n");
@@ -94,17 +92,16 @@ connectlist * get_connection_from_free_pool(struct  connect_pool  *pool,int  fd)
 /*从空闲节点链表中取出一个空闲节点出来存放连接节点信息*/
 connectlist  *  find_free_node_from_connectfreelist(struct  connect_pool *pool)
 {
-	connectlist  *  p;
-	connectlist  *  q;
+	connectlist  *p;
+	connectlist  *q;
 	p=pool->freeconnhead;
 	q=p->next;
-	if(q!=p)
+	while(q!=p)
 	{
-		p->next=q->next;
-		pool->connnum--;
-		return  q;
+	   p->next=q->next;
+	   return   q;
 	}
-	return  NULL;
+
 }
 
 /*新建一个连接*/
@@ -112,10 +109,11 @@ void new_create_connect(struct  serverinfo  *server,int index,struct  connect_po
 {
 	int    startup_time=0;
 	connectlist  *conn=NULL;
-	connectlist  *temp=pool->freeconnhead;
-	if(temp->next!=pool->freeconnhead)
+	if(pool->freeconnhead->next!=NULL)
 	{
 		conn=find_free_node_from_connectfreelist(pool);
+		pool->conn[fd]=conn;
+		printf("获取到空闲节点!conn=%p\n",conn);
 	}
 	else
 	{
@@ -136,7 +134,7 @@ void new_create_connect(struct  serverinfo  *server,int index,struct  connect_po
 	setsockopt(conn->socket,SOL_SOCKET,SO_RCVTIMEO,(char*)&timeout,sizeof(int));
 	setsocketnonblocking(conn->socket);
 	startup_time=conn->starttv.tv_sec*1000+conn->starttv.tv_usec/1000;
-	printf("连接建立时间:%dms\n",startup_time);
+    printf("连接建立时间:%dms\n",startup_time);
 	memcpy(conn->client_addr,inet_ntoa(client_addr->sin_addr),sizeof(inet_ntoa(client_addr->sin_addr)));
 	conn->port=ntohs(client_addr->sin_port);
 }

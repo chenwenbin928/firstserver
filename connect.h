@@ -6,6 +6,7 @@
 #include<time.h>
 #include<sys/time.h>
 #include"server.h"
+
 #define  MAX_CONNECT_POOL   1024
 
 #define  FIRST_MALLOC       0x01
@@ -48,6 +49,7 @@ struct   connect_pool
 	connectlist    **conn;     //连接池的索引表; 可以用哈希表代替吧;
 	int       nodenum;      //当前连接池的有效节点个数;
 	int       connectnum; //连接池的最大容量;
+	//pthread_mutex_t   mutex;
     connectlist  * freeconnhead;//当前的空闲节点链表;		
 	int         connnum; //当前空闲节点数目;
 	int         maxflag; //网络连接上限标志位;为1的话  我们就不允许接收连接了！

@@ -500,7 +500,6 @@ int   del_fd_from_current_process(struct  serverinfo  *server,int  index,int  fd
 		return  -1;
 	}
 	printf("网络连接客户端掉线,网络连接%d删除成功!\n",fd);
-    //相应网络节点资源的释放;这边如果通过匹配fd找到节点确实有点蛋疼
 	return   1;
 }
 /*
@@ -535,7 +534,6 @@ void  worker_process_cycle_handler(struct callback_arg  *data)
 			{
 				continue;
 			}
-			printf("---------------------\n");
 		}
 		else
 		{
@@ -566,6 +564,7 @@ void  worker_process_cycle_handler(struct callback_arg  *data)
                         if(errno==EWOULDBLOCK)
 						{
 							perror("超时了!\n");
+
 						}
 					}
 					else  if(length==0)
@@ -573,8 +572,8 @@ void  worker_process_cycle_handler(struct callback_arg  *data)
 						//执行删除函数;将对应的fd从当前worker进程的epfd实例中删除;
 						del_fd_from_current_process(server,tempindex,event[i].data.fd);
 						find_connect_node_from_live_list(server->process[tempindex].pool,event[i].data.fd);	
-						continue;
 					}
+
 				}
 			}
             

@@ -20,6 +20,7 @@
 #include<sched.h>
 #include<getopt.h>
 #include<time.h>
+#include<pthread.h>
 #include"mempool.h"
 #include"file_mutex.h"
 #define   EPOLL_TIME_OUT     300000
